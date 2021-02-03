@@ -5,9 +5,15 @@ from PyQt5.QtWidgets import *
 from PyQt5.QAxContainer import *
 from PyQt5.QtCore import *
 from pandas import DataFrame
+import account
 
 
 class KiwoomTrade(QAxWidget, SystemTrade):
+    # todo: rq list
+    # rqlist = {
+    #     'opt10081_req': self._opt10081()
+    # }
+
     def __init__(self):
         super().__init__()
         self._create_kiwoom_instance()
@@ -19,6 +25,7 @@ class KiwoomTrade(QAxWidget, SystemTrade):
     def _set_signal_slots(self):
         self.OnEventConnect.connect(self._event_connect)
         self.OnReceiveTrData.connect(self._receive_tr_data)
+        self.OnReceiveChejanData.connect(self._receive_chejan_data)
 
     def comm_connect(self):
         self.dynamicCall("CommConnect()")
@@ -58,6 +65,15 @@ class KiwoomTrade(QAxWidget, SystemTrade):
         self.tr_event_loop = QEventLoop()
         self.tr_event_loop.exec_()
 
+    def send_order(self, rqname, screen_no, acc_no, order_type, code, quantity, price, hoga, order_no):
+        res = self.dynamicCall("SendOrder(QString, QString, QString, int, QString, int, int, QString, QString)",
+                               [rqname, screen_no, acc_no, order_type, code, quantity, price, hoga, order_no])
+        print('send_order: ', res)
+
+    def get_chejan_data(self, fid):
+        ret = self.dynamicCall("GetChejanData(int)", fid)
+        return ret
+
     def _comm_get_data(self, code, real_type, field_name, index, item_name):
         ret = self.dynamicCall("CommGetData(QString, QString, QString, int, QString)", code,
                                real_type, field_name, index, item_name)
@@ -79,6 +95,14 @@ class KiwoomTrade(QAxWidget, SystemTrade):
             self.tr_event_loop.exit()
         except AttributeError:
             pass
+
+    def _receive_chejan_data(self, gubun, item_cnt, fid_list):
+        print('_receive_chejan_data')
+        print(gubun)
+        print(self.get_chejan_data(9203))
+        print(self.get_chejan_data(302))
+        print(self.get_chejan_data(900))
+        print(self.get_chejan_data(901))
 
     def _opw00001(self, rqname, trcode):
         self.d2_deposit = self._comm_get_data(trcode, "", rqname, 0, "d+2추정예수금")
@@ -133,3 +157,17 @@ if __name__ == "__main__":
     kiwoom.set_input_value("종목코드", 'A122630')
     kiwoom.comm_rq_data("opt10001_req", "opt10001", 0, "2000")
 
+    # 주문
+    kiwoom.send_order(rqname='send_order_req',
+                      screen_no='0101',
+                      acc_no=account_number,
+                      # {'신규매수': 1, '신규매도': 2, '매수취소': 3, '매도취소': 4}
+                      order_type=1,
+                      # 종목코드
+                      code='000660',
+                      # 주문 갯수
+                      quantity=10,
+                      price=0,
+                      # hoga {'지정가': "00", '시장가': "03"}
+                      hoga='03',
+                      order_no="")
